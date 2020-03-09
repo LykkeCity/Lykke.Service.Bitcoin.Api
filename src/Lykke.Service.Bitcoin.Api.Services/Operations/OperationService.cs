@@ -4,7 +4,6 @@ using System.Linq;
 using System.Threading.Tasks;
 using Lykke.Service.Bitcoin.Api.Core.Domain.Operation;
 using Lykke.Service.Bitcoin.Api.Core.Domain.Transactions;
-using Lykke.Service.Bitcoin.Api.Core.Services;
 using Lykke.Service.Bitcoin.Api.Core.Services.Exceptions;
 using Lykke.Service.Bitcoin.Api.Core.Services.Operation;
 using Lykke.Service.Bitcoin.Api.Core.Services.TransactionOutputs;
@@ -56,11 +55,11 @@ namespace Lykke.Service.Bitcoin.Api.Services.Operations
 
                     break;
                 case OperationType.ManyInputs:
-                    builtTransaction = await _transactionBuilder.GetManyInputsTransferTransactionAsync(inputs, outputs.Single());
+                    builtTransaction = await _transactionBuilder.GetManyInputsTransferTransactionAsync(inputs, outputs.Single(), includeFee);
 
                     break;
                 case OperationType.ManyOutputs:
-                    builtTransaction = await _transactionBuilder.GetManyOutputsTransferTransactionAsync(inputs.Single(), outputs);
+                    builtTransaction = await _transactionBuilder.GetManyOutputsTransferTransactionAsync(inputs.Single(), outputs, includeFee);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(operationType));

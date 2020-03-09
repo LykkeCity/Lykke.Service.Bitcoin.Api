@@ -31,9 +31,9 @@ namespace Lykke.Service.Bitcoin.Api.Services.Transactions
             _confirmationsSettings = confirmationsSettings;
         }
 
-        private async Task<IList<Coin>> GetUnspentCoins(OperationBitcoinInput input)
+        private async Task<IList<Coin>> GetUnspentCoins(OperationBitcoinInput input, int minConfirmations)
         {
-            var coins = (await _transactionOutputsService.GetUnspentOutputsAsync(input.Address.ToString(), _confirmationsSettings.MinConfirmationsToDetectOperation)).ToList();
+            var coins = (await _transactionOutputsService.GetUnspentOutputsAsync(input.Address.ToString(), minConfirmations)).ToList();
             if (input.Redeem != null)
                 coins = coins.Select(o => o.ToScriptCoin(input.Redeem)).Cast<Coin>().ToList();
             return coins;
@@ -41,7 +41,8 @@ namespace Lykke.Service.Bitcoin.Api.Services.Transactions
 
 
         public async Task<IBuiltTransaction> GetManyOutputsTransferTransactionAsync(OperationInput fromAddress,
-            IList<OperationOutput> toAddresses)
+            IList<OperationOutput> toAddresses,
+            bool includeFee)
         {
             var input = fromAddress.ToBitcoinInput(_addressValidator);
             var outputs = toAddresses.Select(o => o.ToBitcoinOutput(_addressValidator)).ToList();
@@ -50,7 +51,8 @@ namespace Lykke.Service.Bitcoin.Api.Services.Transactions
             foreach (var operationBitcoinOutput in outputs)
                 builder.Send(operationBitcoinOutput.Address, operationBitcoinOutput.Amount);
 
-            var coins = await GetUnspentCoins(input);
+            var minConfirmations = includeFee ? _confirmationsSettings.MinConfirmationsToDetectOperation : 0;
+            var coins = await GetUnspentCoins(input, minConfirmations);
 
             var addressBalance = coins.Sum(o => o.Amount);
             var sendAmount = outputs.Sum(o => o.Amount); ;
@@ -85,7 +87,9 @@ namespace Lykke.Service.Bitcoin.Api.Services.Transactions
 
 
 
-        public async Task<IBuiltTransaction> GetManyInputsTransferTransactionAsync(IList<OperationInput> fromAddresses, OperationOutput toAddress)
+        public async Task<IBuiltTransaction> GetManyInputsTransferTransactionAsync(IList<OperationInput> fromAddresses, 
+            OperationOutput toAddress,
+            bool includeFee)
         {
             var inputs = fromAddresses.Select(o => o.ToBitcoinInput(_addressValidator)).ToList();
             var output = toAddress.ToBitcoinOutput(_addressValidator);
@@ -95,10 +99,11 @@ namespace Lykke.Service.Bitcoin.Api.Services.Transactions
             var totalBalance = Money.Zero;
             var sendAmount = inputs.Sum(o => o.Amount);
             var sentFees = Money.Zero;
+            var minConfirmations = includeFee ? _confirmationsSettings.MinConfirmationsToDetectOperation : 0;
 
             foreach (var operationBitcoinInput in inputs)
             {
-                var coins = await GetUnspentCoins(operationBitcoinInput);
+                var coins = await GetUnspentCoins(operationBitcoinInput, minConfirmations);
                 builder.AddCoins(coins);
 
                 var addressBalance = coins.Sum(o => o.Amount);
@@ -152,8 +157,8 @@ namespace Lykke.Service.Bitcoin.Api.Services.Transactions
             var output = toAddress.ToBitcoinOutput(_addressValidator);
 
             var builder = new TransactionBuilder();
-
-            var coins = await GetUnspentCoins(input);
+            var minConfirmations = includeFee ? _confirmationsSettings.MinConfirmationsToDetectOperation : 0;
+            var coins = await GetUnspentCoins(input, minConfirmations);
             builder.AddCoins(coins);
 
             var addressBalance = coins.Sum(o => o.Amount);
