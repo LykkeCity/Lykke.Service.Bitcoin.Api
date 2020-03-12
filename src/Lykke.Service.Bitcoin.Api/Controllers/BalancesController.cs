@@ -3,11 +3,14 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 using Common;
+using Common.Log;
 using Lykke.Common.Api.Contract.Responses;
 using Lykke.Common.ApiLibrary.Exceptions;
+using Lykke.Common.Log;
 using Lykke.Service.Bitcoin.Api.Core.Services;
 using Lykke.Service.Bitcoin.Api.Core.Services.Address;
 using Lykke.Service.Bitcoin.Api.Core.Services.Exceptions;
+using Lykke.Service.Bitcoin.Api.Services.Operations;
 using Lykke.Service.BlockchainApi.Contract;
 using Lykke.Service.BlockchainApi.Contract.Balances;
 using Microsoft.AspNetCore.Mvc;
@@ -21,11 +24,16 @@ namespace Lykke.Service.Bitcoin.Api.Controllers
     {
         private readonly IAddressValidator _addressValidator;
         private readonly IWalletBalanceService _balanceService;
+        private readonly OperationsConfirmationsSettings _confirmationsSettings;
+        private readonly ILog _log;
 
-        public BalancesController(IAddressValidator addressValidator, IWalletBalanceService balanceService)
+        public BalancesController(IAddressValidator addressValidator, IWalletBalanceService balanceService, OperationsConfirmationsSettings confirmationsSettings,
+            ILogFactory logFactory)
         {
             _addressValidator = addressValidator;
             _balanceService = balanceService;
+            _confirmationsSettings = confirmationsSettings;
+            _log = logFactory.CreateLog(this);
         }
 
         [HttpPost("api/balances/{address}/observation")]
@@ -101,6 +109,21 @@ namespace Lykke.Service.Bitcoin.Api.Controllers
                     AssetId = p.AssetId,
                     Block = p.UpdatedAtBlockHeight
                 }).ToList().AsReadOnly()));
+        }
+
+        [HttpPost("api/balances/force-update/{address}")]
+        [SwaggerOperation(nameof(ForceUpdateBalance))]
+        public async Task<IActionResult> ForceUpdateBalance(string address)
+        {
+            _log.Warning("Force updating the balance", context: new
+            {
+                Address =address,
+                MinConfirmationsToDetectOperation = _confirmationsSettings.MinConfirmationsToDetectOperation
+            });
+
+            await _balanceService.UpdateBalanceAsync(address, _confirmationsSettings.MinConfirmationsToDetectOperation);
+
+            return Ok();
         }
     }
 }
