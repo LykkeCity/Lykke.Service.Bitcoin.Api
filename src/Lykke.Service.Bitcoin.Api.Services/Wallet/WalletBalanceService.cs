@@ -94,7 +94,7 @@ namespace Lykke.Service.Bitcoin.Api.Services.Wallet
             var balance =
                 await _blockChainProvider.GetBalanceSatoshiFromUnspentOutputsAsync(wallet.Address, minConfirmations);
             
-            _log.Info("Bitcoin balance retrieved from provider", context: new { Address = wallet.Address, Height = height, MinConfirmation = minConfirmations });
+            _log.Info("Bitcoin balance retrieved from provider", context: new { Address = wallet.Address, Height = height, MinConfirmation = minConfirmations, Balance = balance });
 
             if (balance != 0)
             {
