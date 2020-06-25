@@ -42,6 +42,8 @@ namespace Lykke.Job.Bitcoin.Modules
             RegisterObservableServices(builder);
             RegisterAssetServices(builder);
             RegisterFeeServices(builder);
+
+            builder.RegisterType<UnspentCoinsProvider>().As<IUnspentCoinsProvider>();
         }
 
         private void RegisterNetwork(ContainerBuilder builder)
