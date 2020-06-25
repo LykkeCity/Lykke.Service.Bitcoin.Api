@@ -43,7 +43,6 @@ namespace Lykke.Service.Bitcoin.Api.Services.BlockChainProviders.QbitNinja
             return tx?.Block?.Confirmations ?? 0;
         }
 
-
         public async Task<IList<Coin>> GetUnspentOutputsAsync(string address, int minConfirmationCount)
         {
             return (await GetAllUnspentOutputs(address, minConfirmationCount)).OfType<Coin>().ToList();
@@ -54,19 +53,11 @@ namespace Lykke.Service.Bitcoin.Api.Services.BlockChainProviders.QbitNinja
             return (await GetAllUnspentOutputs(address, minConfirmationCount)).OfType<ColoredCoin>().ToList();
         }
 
-
-        public async Task<long> GetBalanceSatoshiFromUnspentOutputsAsync(string address, int minConfirmationCount)
-        {
-            var unspentOutputs = await GetUnspentOutputsAsync(address, minConfirmationCount);
-            return unspentOutputs.Select(o => o.Amount).DefaultIfEmpty().Sum(p => p?.Satoshi ?? 0);
-        }
-
         public async Task<int> GetLastBlockHeightAsync()
         {
             var block = await _ninjaClient.GetBlock(BlockFeature.Parse("tip"), true);
             return block.AdditionalInformation.Height;
         }
-
 
         public async Task<IEnumerable<BitcoinTransaction>> GetTransactionsAfterTxAsync(string address, string afterHash)
         {
@@ -101,7 +92,6 @@ namespace Lykke.Service.Bitcoin.Api.Services.BlockChainProviders.QbitNinja
             })).OrderBy(o => o.Timestamp).ToList();
         }
 
-
         public async Task<IEnumerable<string>> GetInvolvedInTxAddresses(string txHash)
         {
             var fullTxData = await _ninjaClient.GetTransaction(uint256.Parse(txHash));
@@ -115,7 +105,7 @@ namespace Lykke.Service.Bitcoin.Api.Services.BlockChainProviders.QbitNinja
                 .Select(p => p.ToString())
                 .ToList();
         }
-        
+
         public async Task<IEnumerable<(string txHash, IEnumerable<string> destinationAddresses)>> GetTxOutputAddresses(int blockHeight)
         {
             var blockResponse =  await _ninjaClient.GetBlock(BlockFeature.Parse(blockHeight.ToString()));

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Lykke.Service.Bitcoin.Api.Core.Domain.Outputs;
+using Lykke.Service.Bitcoin.Api.Core.Services;
 using Lykke.Service.Bitcoin.Api.Core.Services.BlockChainReaders;
 using Lykke.Service.Bitcoin.Api.Core.Services.TransactionOutputs;
 using NBitcoin;
@@ -13,24 +14,29 @@ namespace Lykke.Service.Bitcoin.Api.Services.TransactionOutputs
     {
         private readonly IBlockChainProvider _blockChainProvider;
         private readonly IInternalOutputRepository _internalOutputRepository;
+        private readonly IUnspentCoinsProvider _unspentCoinsProvider;
         private readonly Network _network;
         private readonly ISpentOutputRepository _spentOutputRepository;
 
         public TransactionOutputsService(IBlockChainProvider blockChainProvider,
             Network network,
-            ISpentOutputRepository spentOutputRepository, IInternalOutputRepository internalOutputRepository)
+            ISpentOutputRepository spentOutputRepository,
+            IInternalOutputRepository internalOutputRepository,
+            IUnspentCoinsProvider unspentCoinsProvider
+            )
         {
             _blockChainProvider = blockChainProvider;
             _network = network;
             _spentOutputRepository = spentOutputRepository;
             _internalOutputRepository = internalOutputRepository;
+            _unspentCoinsProvider = unspentCoinsProvider;
         }
 
         public async Task<IEnumerable<Coin>> GetUnspentOutputsAsync(string address, int confirmationsCount)
         {
             var blockchainOutputs = await _blockChainProvider.GetUnspentOutputsAsync(address, confirmationsCount);
 
-            return await FilterAsync(await AddInternalOutputsAsync(blockchainOutputs, address, confirmationsCount));
+            return await _unspentCoinsProvider.FilterAsync(await AddInternalOutputsAsync(blockchainOutputs, address, confirmationsCount));
         }
 
         public Task AddInternalOutputs(Guid operationId, IEnumerable<Coin> coins)
@@ -73,15 +79,6 @@ namespace Lykke.Service.Bitcoin.Api.Services.TransactionOutputs
 
             return blockchainOutputs;
         }
-
-        private async Task<IEnumerable<Coin>> FilterAsync(IList<Coin> coins)
-        {
-            var spentOutputs = new HashSet<OutPoint>(
-                (await _spentOutputRepository.GetSpentOutputsAsync(coins.Select(o => new Output(o.Outpoint))))
-                .Select(o => new OutPoint(uint256.Parse(o.TransactionHash), o.N)));
-            return coins.Where(c => !spentOutputs.Contains(c.Outpoint));
-        }
-
 
         public Task SetInternalOutputsTxHash(Guid operationId, string txHash)
         {
