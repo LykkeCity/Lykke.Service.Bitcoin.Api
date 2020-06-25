@@ -17,6 +17,7 @@ namespace Lykke.Service.Bitcoin.Api.Services.Wallet
         private readonly IAssetService _assetService;
         private readonly IWalletBalanceRepository _balanceRepository;
         private readonly IBlockChainProvider _blockChainProvider;
+        private readonly IUnspentCoinsProvider _unspentCoinsProvider;
         private readonly ILog _log;
         private readonly Network _network;
         private readonly IObservableWalletRepository _observableWalletRepository;
@@ -24,6 +25,7 @@ namespace Lykke.Service.Bitcoin.Api.Services.Wallet
         public WalletBalanceService(IWalletBalanceRepository balanceRepository,
             IObservableWalletRepository observableWalletRepository,
             IBlockChainProvider blockChainProvider,
+            IUnspentCoinsProvider unspentCoinsProvider,
             IAssetService assetService,
             Network network,
             ILogFactory logFactory)
@@ -31,6 +33,7 @@ namespace Lykke.Service.Bitcoin.Api.Services.Wallet
             _balanceRepository = balanceRepository;
             _observableWalletRepository = observableWalletRepository;
             _blockChainProvider = blockChainProvider;
+            _unspentCoinsProvider = unspentCoinsProvider;
             _assetService = assetService;
             _network = network;
             _log = logFactory.CreateLog(this);
@@ -91,10 +94,12 @@ namespace Lykke.Service.Bitcoin.Api.Services.Wallet
         private async Task<IWalletBalance> UpdateBitcoinBalance(IObservableWallet wallet, int height,
             int minConfirmations)
         {
-            var balance =
-                await _blockChainProvider.GetBalanceSatoshiFromUnspentOutputsAsync(wallet.Address, minConfirmations);
-            
-            _log.Info("Bitcoin balance retrieved from provider", context: new { Address = wallet.Address, Height = height, MinConfirmation = minConfirmations, Balance = balance });
+            var unspentOutputs = await _blockChainProvider.GetUnspentOutputsAsync(wallet.Address, minConfirmations);
+            var coins = await _unspentCoinsProvider.FilterAsync(unspentOutputs);
+
+            var balance = coins.Select(o => o.Amount).DefaultIfEmpty().Sum(p => p?.Satoshi ?? 0);
+
+            _log.Info("Bitcoin balance retrieved from provider and filtered", context: new { Address = wallet.Address, Height = height, MinConfirmation = minConfirmations, Balance = balance });
 
             if (balance != 0)
             {
@@ -116,9 +121,11 @@ namespace Lykke.Service.Bitcoin.Api.Services.Wallet
             if (!coloredCoins.Any())
                 return;
 
+            var coins = await _unspentCoinsProvider.FilterAsync(coloredCoins);
+
             var coloredAssets = await _assetService.GetColoredAssetsAsync();
 
-            foreach (var coinsGroup in coloredCoins.GroupBy(o => o.AssetId))
+            foreach (var coinsGroup in coins.GroupBy(o => o.AssetId))
             {
                 var blockchainAssetId = coinsGroup.Key.GetWif(_network).ToWif();
 
