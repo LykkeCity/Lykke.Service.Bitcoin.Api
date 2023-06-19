@@ -1,4 +1,5 @@
-﻿using Lykke.Service.Bitcoin.Api.Core.Services.Fee;
+﻿using System.Data.SqlClient;
+using Lykke.Service.Bitcoin.Api.Core.Services.Fee;
 using Lykke.Service.Bitcoin.Api.Services.BlockChainProviders;
 using Lykke.SettingsReader.Attributes;
 
@@ -37,5 +38,8 @@ namespace Lykke.Job.Bitcoin.Settings.ServiceSettings
         public int StartFromBlockHeight { get; set; }
 
         public int IgnoreUnspentOutputsBeforeBlockHeight { get; set; }
+        
+        [Optional]
+        public bool UseRpcBlockchainProvider { get; set; }
     }
 }
