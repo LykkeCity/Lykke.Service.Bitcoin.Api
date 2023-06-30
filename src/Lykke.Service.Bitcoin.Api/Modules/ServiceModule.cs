@@ -14,6 +14,7 @@ using Lykke.Service.Bitcoin.Api.Core.Services.TransactionOutputs;
 using Lykke.Service.Bitcoin.Api.Core.Services.Transactions;
 using Lykke.Service.Bitcoin.Api.Services.Address;
 using Lykke.Service.Bitcoin.Api.Services.Asset;
+using Lykke.Service.Bitcoin.Api.Services.BlockChainProviders;
 using Lykke.Service.Bitcoin.Api.Services.BlockChainProviders.QbitNinja;
 using Lykke.Service.Bitcoin.Api.Services.Broadcast;
 using Lykke.Service.Bitcoin.Api.Services.Fee;
@@ -100,8 +101,14 @@ namespace Lykke.Service.Bitcoin.Api.Modules
             var networkType = Network.GetNetwork(_settings.Network);
 
             builder.RegisterInstance(new QBitNinjaClient(_settings.NinjaApiUrl, networkType));
-            builder.RegisterType<NinjaApiBlockChainProvider>().As<IBlockChainProvider>();
-
+            if (_settings.UseRpcBlockchainProvider)
+            {
+                builder.RegisterType<RpcBlockchainProvider>().As<IBlockChainProvider>();
+            }
+            else
+            {
+                builder.RegisterType<NinjaApiBlockChainProvider>().As<IBlockChainProvider>();
+            }
             builder.RegisterInstance(new RPCClient(
                 new NetworkCredential(_settings.Rpc.UserName, _settings.Rpc.Password),
                 new Uri(_settings.Rpc.Host),
