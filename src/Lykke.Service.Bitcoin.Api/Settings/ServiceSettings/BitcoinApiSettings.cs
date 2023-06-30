@@ -38,5 +38,8 @@ namespace Lykke.Service.Bitcoin.Api.Settings.ServiceSettings
 
         [Optional]
         public IReadOnlyList<Guid> OperationsToForceRebuild { get; set; }
+        
+        [Optional]
+        public bool UseRpcBlockchainProvider { get; set; }
     }
 }
